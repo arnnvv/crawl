@@ -6,7 +6,11 @@ import { setTimeout } from "node:timers/promises";
 const TIMEOUT = 60000; // Increase timeout to 60 seconds
 const SCROLL_DELAY = 2000; // Increase scroll delay to 2 seconds
 
-async function waitForSelector(page: Page, selector: string, timeout = TIMEOUT): Promise<boolean> {
+async function waitForSelector(
+  page: Page,
+  selector: string,
+  timeout = TIMEOUT,
+): Promise<boolean> {
   try {
     await page.waitForSelector(selector, { timeout });
     return true;
@@ -18,7 +22,7 @@ async function waitForSelector(page: Page, selector: string, timeout = TIMEOUT):
 
 async function handleLoginChallenges(page: Page) {
   // Handle "Save Login Info" dialog
-  const saveLoginButton = await page.$('button._acan._acap._acas._aj1-');
+  const saveLoginButton = await page.$("button._acan._acap._acas._aj1-");
   if (saveLoginButton) {
     await saveLoginButton.click();
     await setTimeout(1000);
@@ -32,9 +36,13 @@ async function handleLoginChallenges(page: Page) {
   }
 
   // Check for suspicious login attempt dialog
-  const suspiciousLoginText = await page.$('text/This login attempt appears suspicious/i');
+  const suspiciousLoginText = await page.$(
+    "text/This login attempt appears suspicious/i",
+  );
   if (suspiciousLoginText) {
-    throw new Error('Suspicious login detected. Please log in manually first and try again.');
+    throw new Error(
+      "Suspicious login detected. Please log in manually first and try again.",
+    );
   }
 }
 
@@ -44,20 +52,24 @@ async function getList(
   type: "followers" | "following",
 ): Promise<string[]> {
   console.log(`Fetching ${type} list for ${username}`);
-  
+
   // Wait for and click the followers/following link
   const linkSelector = `a[href="/${username}/${type}/"]`;
-  if (!await waitForSelector(page, linkSelector)) {
-    throw new Error(`Could not find ${type} link. Please verify the account is accessible.`);
+  if (!(await waitForSelector(page, linkSelector))) {
+    throw new Error(
+      `Could not find ${type} link. Please verify the account is accessible.`,
+    );
   }
-  
+
   await page.click(linkSelector);
   console.log(`Clicked ${type} link`);
 
   // Wait for the dialog to appear
   const dialogSelector = 'div[role="dialog"] ul';
-  if (!await waitForSelector(page, dialogSelector)) {
-    throw new Error(`${type} dialog did not appear. The account might be private or rate-limited.`);
+  if (!(await waitForSelector(page, dialogSelector))) {
+    throw new Error(
+      `${type} dialog did not appear. The account might be private or rate-limited.`,
+    );
   }
 
   // Scroll to load all users
@@ -104,18 +116,16 @@ async function getList(
   return userList;
 }
 
-export async function scrapeInstagram(
-  formData: FormData
-): Promise<{
+export async function scrapeInstagram(formData: FormData): Promise<{
   followersCount: number;
   followingCount: number;
   notFollowBack: string[];
   notFollowingBack: string[];
 }> {
-  const igUsername = formData.get('username') as string;
-  const igPassword = formData.get('password') as string;
+  const igUsername = formData.get("username") as string;
+  const igPassword = formData.get("password") as string;
 
-  console.log(igUsername, igPassword)
+  console.log(igUsername, igPassword);
   if (!igUsername || !igPassword) {
     throw new Error("Instagram credentials are required");
   }
@@ -127,16 +137,18 @@ export async function scrapeInstagram(
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-accelerated-2d-canvas",
-      "--disable-gpu"
+      "--disable-gpu",
     ],
   });
 
   try {
     const page = await browser.newPage();
-    
+
     // Set a realistic viewport and user agent
     await page.setViewport({ width: 1280, height: 800 });
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    );
 
     // Navigate to login page
     await page.goto("https://www.instagram.com/accounts/login/", {
@@ -145,17 +157,20 @@ export async function scrapeInstagram(
     });
 
     // Handle login
-    if (!await waitForSelector(page, 'input[name="username"]')) {
+    if (!(await waitForSelector(page, 'input[name="username"]'))) {
       throw new Error("Login page did not load properly");
     }
 
-    console.log('logged in');
+    console.log("logged in");
     await page.type('input[name="username"]', igUsername, { delay: 100 });
     await page.type('input[name="password"]', igPassword, { delay: 100 });
     await page.click('button[type="submit"]');
 
     // Wait for navigation and handle any login challenges
-    await page.waitForNavigation({ waitUntil: "networkidle2", timeout: TIMEOUT });
+    await page.waitForNavigation({
+      waitUntil: "networkidle2",
+      timeout: TIMEOUT,
+    });
     await handleLoginChallenges(page);
 
     // Navigate to profile page
